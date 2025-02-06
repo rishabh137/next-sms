@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -13,6 +13,10 @@ const AdminLogin = () => {
   });
   const [errors, setErrors] = useState({});
   const [passwordVisible, setPasswordVisible] = useState(false);
+
+  useEffect(()=>{
+    document.title = "SMS Login";
+}, [])
 
   const handleChange = async (e) => {
     const { name, value } = e.target;

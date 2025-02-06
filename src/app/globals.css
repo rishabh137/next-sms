@@ -39,7 +39,7 @@
 
 .form-group {
   position: relative;
-  height: 57px;
+  height: 55px;
 }
 
 .form-group label {
@@ -73,6 +73,17 @@ td button {
   border: none;
   background: none;
 }
+
+.imgButton {
+  color: #4e73df;
+  border: none;
+  font-size: 20px;
+  background: none;
+  position: relative;
+  top: -30px;
+  left: 70px;
+}
+
 
 .page-link.active {
   background-color: #4e73df;
@@ -116,6 +127,61 @@ td button {
   pointer-events: none
 }
 
-#content-wrapper {
-  margin-bottom: 2.4rem;
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar .nav-item .collapse {
+  height: 0px;
+  opacity: 0;
+  transition: .5s ease-in-out;
+}
+
+.sidebar .nav-item .collapse.show {
+  height: auto;
+  opacity: 1;
+  transition: .5s ease-in-out;
+}
+
+/* Add this CSS for dimmed background and modal behavior */
+.image-preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.image-preview-modal-overlay img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+.image-preview-modal-overlay button {
+  top: -12px;
+  right: -12px;
+  background-color: white;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.image-preview-modal-overlay button:hover {
+  background-color: #f0f0f0;
 }

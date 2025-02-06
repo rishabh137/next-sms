@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import toast from 'react-hot-toast';
 import { useRouter } from "next/navigation";
-import axios from "axios";
-import StudentFormContent from "@/components/StudentFormContent";
+import StudentFormContent from "@/components/studentFormContent";
 
 const AddStudent = () => {
     const router = useRouter();
@@ -14,13 +14,18 @@ const AddStudent = () => {
         course: "",
         semester: "",
         contact: "",
-        status: "Inactive",
-        image: "",
+        status: "",
+        image: null,
     });
 
     const [errors, setErrors] = useState({});
     const [previewImage, setPreviewImage] = useState(null);
     const [courses, setCourses] = useState([]);
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        document.title = "Add New Student";
+    }, []);
 
     useEffect(() => {
         const getCourse = async () => {
@@ -29,15 +34,11 @@ const AddStudent = () => {
                 if (response.status === 200) {
                     const fetchedCourses = response.data.courses;
                     setCourses(fetchedCourses);
-
-                    if (fetchedCourses.length > 0) {
-                        setFormData((prev) => ({ ...prev, course: fetchedCourses[0].course_id }));
-                    }
                 }
             } catch (error) {
                 setCourses([]);
             }
-        }
+        };
 
         getCourse();
     }, []);
@@ -48,18 +49,64 @@ const AddStudent = () => {
         validateField(name, value);
     };
 
-    const handleFileChange = (e) => {
+    const isImageFile = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const arr = new Uint8Array(e.target.result).subarray(0, 4);
+                let header = "";
+                for (let i = 0; i < arr.length; i++) {
+                    header += arr[i].toString(16);
+                }
+
+                const isImage = header.startsWith('89504e47') ||
+                    header.startsWith('ffd8') ||
+                    header.startsWith('424d');
+
+                resolve(isImage);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    };
+
+    const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
+            const isValid = await isImageFile(file);
+            if (!isValid) {
+                setErrors({ ...errors, image: "Invalid image file" });
+                setPreviewImage(null);
+                setFormData({ ...formData, image: null });
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
+                return;
+            }
+
             const reader = new FileReader();
-            reader.onload = () => setPreviewImage(reader.result);
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    setPreviewImage(reader.result);
+                    setFormData({ ...formData, image: file });
+                    setErrors({ ...errors, image: "" });
+                };
+                img.onerror = () => {
+                    setErrors({ ...errors, image: "Invalid image file" });
+                    setPreviewImage(null);
+                    setFormData({ ...formData, image: null });
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                    }
+                };
+                img.src = reader.result;
+            };
             reader.readAsDataURL(file);
-            setFormData({ ...formData, image: file });
         }
     };
 
-    let message = "";
     const validateField = (name, value) => {
+        let message = "";
         switch (name) {
             case "name":
                 if (!value) message = "Name is required.";
@@ -71,17 +118,17 @@ const AddStudent = () => {
             case "course":
                 if (!value) message = "Course is required.";
                 break;
+            case "status":
+                if (!value) message = "Status is required.";
+                break;
             case "semester":
                 if (!value) message = "Semester is required.";
                 else if (!/^\d+$/.test(value)) message = "Invalid Semester.";
                 break;
             case "contact":
                 if (!value) message = "Contact is required.";
+                else if (!/^\d+$/.test(value)) message = "Contact must contain only digits.";
                 else if (!/^\d{10}$/.test(value)) message = "Contact must be a 10-digit number.";
-                break;
-            case "image":
-                if (value && !["image/jpeg", "image/png", "image/jpg"].includes(value.type))
-                    message = "Only JPEG, JPG, and PNG images are allowed.";
                 break;
             default:
                 break;
@@ -112,16 +159,15 @@ const AddStudent = () => {
                     break;
                 case "contact":
                     if (!formData[key]) message = "Contact is required.";
+                    else if (!/^\d+$/.test(formData[key])) message = "Contact must contain only digits.";
                     else if (!/^\d{10}$/.test(formData[key])) message = "Contact must be a 10-digit number.";
                     break;
-                case "image":
-                    if (formData[key] && !["image/jpeg", "image/png", "image/jpg"].includes(formData[key].type))
-                        message = "Only JPEG, JPG, and PNG images are allowed.";
+                case "status":
+                    if (!formData[key]) message = "Status is required.";
                     break;
                 default:
                     break;
             }
-            setErrors((prevErrors) => ({ ...prevErrors, [key]: message }));
             if (message) {
                 formErrors[key] = message;
             }
@@ -132,18 +178,25 @@ const AddStudent = () => {
             return;
         }
 
-        const imageToUpload = formData.image || '/image/undraw_profile.svg';
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', formData.name);
+        formDataToSend.append('roll', formData.roll);
+        formDataToSend.append('course', formData.course);
+        formDataToSend.append('semester', formData.semester);
+        formDataToSend.append('contact', formData.contact);
+        formDataToSend.append('status', formData.status);
+
+        if (formData.image instanceof File) {
+            formDataToSend.append('image', formData.image);
+        } else {
+            formDataToSend.append('image', null);
+        }
+
         try {
-            const response = await axios.post("/api/student/add_student", {
-                name: formData.name,
-                roll: formData.roll,
-                course: formData.course,
-                semester: formData.semester,
-                contact: formData.contact,
-                status: formData.status,
-                image: imageToUpload,
-            }, {
-                headers: { "Content-Type": "multipart/form-data" },
+            const response = await axios.post("/api/student/add_student", formDataToSend, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
             });
 
             if (response.status === 200) {
@@ -153,8 +206,8 @@ const AddStudent = () => {
                     course: "",
                     semester: "",
                     contact: "",
-                    status: "inactive",
-                    image: "",
+                    status: "Inactive",
+                    image: null,
                 });
                 setPreviewImage(null);
 
@@ -172,9 +225,17 @@ const AddStudent = () => {
         }
     };
 
+    const hideImage = () => {
+        setPreviewImage(null);
+        setFormData((prev) => ({ ...prev, image: null }));
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
     return (
         <div id="page-top">
-            <div id="content-wrapper" className="d-flex flex-column">
+            <div id="content-wrapper" style={{ background: "#f8f9fc", marginBottom: "5.7rem" }} className="d-flex flex-column">
                 <div id="content">
                     <div className="container-fluid">
                         <h1 className="h3 mb-4 mt-3 text-gray-800">Add New Student</h1>
@@ -184,12 +245,17 @@ const AddStudent = () => {
 
                             <div className="mb-3 imageContainer">
                                 {previewImage && (
-                                    <img
-                                        className="img-profile rounded-circle"
-                                        style={{ width: "80px", height: "80px" }}
-                                        src={previewImage}
-                                        alt="Student"
-                                    />
+                                    <>
+                                        <button id='image_icon' type='button' onClick={hideImage} className="imgButton">
+                                            <i className='fa-solid fa-trash'></i>
+                                        </button>
+                                        <img
+                                            className="img-profile rounded-circle"
+                                            style={{ width: "80px", height: "80px" }}
+                                            src={previewImage}
+                                            alt="Student"
+                                        />
+                                    </>
                                 )}
                             </div>
 
@@ -202,8 +268,10 @@ const AddStudent = () => {
                                     accept="image/*"
                                     style={{ height: "auto", fontSize: "15px" }}
                                     onChange={handleFileChange}
+                                    ref={fileInputRef}
                                 />
                                 <label htmlFor="image">Image</label>
+                                {errors.image && <div className="text-danger text-xs">{errors.image}</div>}
                             </div>
 
                             <button type="submit" id="student_submit" className="btn btn-primary">
